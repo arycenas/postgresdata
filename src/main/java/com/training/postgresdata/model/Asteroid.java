@@ -17,8 +17,11 @@ public class Asteroid {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
     private double diameter;
     private double distance;
     private double velocity;
+    private String hazardous;
+    private String closeApproachDate;
 }

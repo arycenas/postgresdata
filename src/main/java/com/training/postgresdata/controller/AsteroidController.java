@@ -1,7 +1,6 @@
 package com.training.postgresdata.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,13 +8,15 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.training.postgresdata.model.Asteroid;
+import com.training.postgresdata.request.AsteroidRequest;
 import com.training.postgresdata.service.AsteroidService;
+import com.training.postgresdata.service.ValidateService;
 
 @RestController
 @RequestMapping("/asteroid")
@@ -24,52 +25,59 @@ public class AsteroidController {
     @Autowired
     private AsteroidService asteroidService;
 
+    @Autowired
+    private ValidateService validateService;
+
+    private boolean validateToken(String token) {
+        return validateService.validateTokenFromUsermanage(token);
+    }
+
     @PostMapping("/save")
-    public Asteroid createAsteroid(@RequestBody Asteroid asteroid) {
-        return asteroidService.saveAsteroid(asteroid);
+    public ResponseEntity<?> createAsteroid(@RequestHeader("Authorization") String token,
+            @RequestBody AsteroidRequest asteroidRequest) {
+        if (!validateToken(token.substring(7))) {
+            return ResponseEntity.status(401).body("Invalid or expired token.");
+        }
+
+        List<Asteroid> asteroidList = asteroidService.saveAsteroid(
+                asteroidRequest.getStartDate(),
+                asteroidRequest.getEndDate(),
+                asteroidRequest.getSortBy(),
+                asteroidRequest.getSortDirection());
+
+        return ResponseEntity.ok(asteroidList);
     }
 
     @GetMapping
-    public List<Asteroid> getAllAsteroids() {
-        return asteroidService.getAllAsteroids();
+    public ResponseEntity<?> getAllAsteroids(@RequestHeader("Authorization") String token) {
+        if (!validateToken(token.substring(7))) {
+            return ResponseEntity.status(401).body("Invalid or expired token.");
+        }
+
+        return ResponseEntity.ok(asteroidService.getAllAsteroids());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Asteroid> getAsteroidById(@PathVariable Long id) {
-        Optional<Asteroid> asteroid = asteroidService.getAsteroidById(id);
-        if (asteroid.isPresent()) {
-            return ResponseEntity.ok(asteroid.get());
-        } else {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> getAsteroidById(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        if (!validateToken(token.substring(7))) {
+            return ResponseEntity.status(401).body("Invalid or expired token.");
         }
-    }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Asteroid> updateAsteroid(@PathVariable Long id, @RequestBody Asteroid asteroidDetails) {
-        Optional<Asteroid> asteroid = asteroidService.getAsteroidById(id);
-        if (asteroid.isPresent()) {
-            Asteroid existAsteroid = asteroid.get();
-            existAsteroid.setName(asteroidDetails.getName());
-            existAsteroid.setDiameter(asteroidDetails.getDiameter());
-            existAsteroid.setDistance(asteroidDetails.getDistance());
-            existAsteroid.setVelocity(asteroidDetails.getVelocity());
-
-            Asteroid updatedAsteroid = asteroidService.saveAsteroid(existAsteroid);
-
-            return ResponseEntity.ok(updatedAsteroid);
+        Asteroid asteroid = asteroidService.getAsteroidById(id);
+        if (asteroid != null) {
+            return ResponseEntity.ok(asteroid);
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAsteroid(@PathVariable Long id) {
-        Optional<Asteroid> asteroid = asteroidService.getAsteroidById(id);
-        if (asteroid.isPresent()) {
-            asteroidService.deleteAsteroid(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> deleteAsteroid(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        if (!validateToken(token.substring(7))) {
+            return ResponseEntity.status(401).body("Invalid or expired token.");
         }
+
+        asteroidService.deleteAsteroid(id);
+        return ResponseEntity.noContent().build();
     }
 }
