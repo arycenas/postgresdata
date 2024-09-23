@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -110,22 +112,74 @@ public class AsteroidService {
     }
 
     public Asteroid updateAsteroidPartially(Long id, HashMap<String, Object> updates) {
+        Logger log = LoggerFactory.getLogger(AsteroidService.class);
+
+        // Cari asteroid berdasarkan ID
         Optional<Asteroid> asteroidOpt = asteroidRepository.findById(id);
+
+        log.info("Mencari asteroid dengan ID: {}", id);
 
         if (asteroidOpt.isPresent()) {
             Asteroid asteroid = asteroidOpt.get();
+            log.info("Asteroid ditemukan: {}", asteroid);
 
-            updates.forEach((key, value) -> {
-                switch (key) {
-                    case "name" -> asteroid.setName((String) value);
-                    case "diameter" -> asteroid.setDiameter((Double) value);
-                    case "distance" -> asteroid.setDistance((Double) value);
-                    case "velocity" -> asteroid.setVelocity((Double) value);
-                    case "isHazardous" -> asteroid.setHazardous((String) value);
-                    case "closeApproachDate" -> asteroid.setCloseApproachDate((String) value);
+            // Lakukan pembaruan parsial hanya untuk field yang ada di updates dan valid
+            updates.forEach((var key, var value) -> {
+                if (value != null) {
+                    switch (key) {
+                        case "name" -> {
+                            if (value instanceof String string) {
+                                asteroid.setName(string);
+                            } else {
+                                log.warn("Tipe data untuk 'name' tidak valid: {}", value.getClass().getSimpleName());
+                            }
+                        }
+                        case "diameter" -> {
+                            if (value instanceof Number number) {
+                                asteroid.setDiameter(number.doubleValue());
+                            } else {
+                                log.warn("Tipe data untuk 'diameter' tidak valid: {}",
+                                        value.getClass().getSimpleName());
+                            }
+                        }
+                        case "distance" -> {
+                            if (value instanceof Number number) {
+                                asteroid.setDistance(number.doubleValue());
+                            } else {
+                                log.warn("Tipe data untuk 'distance' tidak valid: {}",
+                                        value.getClass().getSimpleName());
+                            }
+                        }
+                        case "velocity" -> {
+                            if (value instanceof Number number) {
+                                asteroid.setVelocity(number.doubleValue());
+                            } else {
+                                log.warn("Tipe data untuk 'velocity' tidak valid: {}",
+                                        value.getClass().getSimpleName());
+                            }
+                        }
+                        case "isHazardous" -> {
+                            if (value instanceof String string) {
+                                asteroid.setHazardous(string);
+                            } else {
+                                log.warn("Tipe data untuk 'isHazardous' tidak valid: {}",
+                                        value.getClass().getSimpleName());
+                            }
+                        }
+                        case "closeApproachDate" -> {
+                            if (value instanceof String string) {
+                                asteroid.setCloseApproachDate(string);
+                            } else {
+                                log.warn("Tipe data untuk 'closeApproachDate' tidak valid: {}",
+                                        value.getClass().getSimpleName());
+                            }
+                        }
+                        default -> log.warn("Field tidak dikenali: {}", key);
+                    }
                 }
             });
 
+            // Simpan asteroid yang diperbarui ke database
             return asteroidRepository.save(asteroid);
         } else {
             throw new RuntimeException("Asteroid not found");

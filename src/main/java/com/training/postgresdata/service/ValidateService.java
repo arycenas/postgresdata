@@ -10,7 +10,7 @@ import com.training.postgresdata.request.TokenRequest;
 @Service
 public class ValidateService {
 
-    private static final String USERMANAGE = "http://localhost:8080/auth/validate";
+    private static final String USERMANAGE = "http://usermanage-app:8080/auth/validate";
 
     @Autowired
     private RestTemplate restTemplate;

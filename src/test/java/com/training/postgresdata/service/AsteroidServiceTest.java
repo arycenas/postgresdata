@@ -105,7 +105,7 @@ public class AsteroidServiceTest {
         Asteroid asteroid = asteroids.get(0);
         assertEquals("(1999 TY2)", asteroid.getName());
         assertEquals(130.0289270043, asteroid.getDiameter());
-        assertEquals(0.0, asteroid.getDistance());
+        assertEquals(4.64276685711726E7, asteroid.getDistance());
         assertEquals(88033.1436807948, asteroid.getVelocity());
         assertEquals("2023-09-19", asteroid.getCloseApproachDate());
         assertEquals("No", asteroid.getHazardous());
