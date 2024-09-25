@@ -8,10 +8,11 @@
   - [Asteroid Data Service](#asteroid-data-service)
 - [Technologies Used](#technologies-used)
   - [Endpoints](#endpoints)
-    - [Register a New User](#register-a-new-user)
-    - [User Login](#user-login)
-    - [Refresh JWT Token](#refresh-jwt-token)
-    - [Validate Token](#validate-token)
+    - [Get All Stored Asteroids](#get-all-asteroids)
+    - [Get Specific Asteroid by ID](#get-asteroid)
+    - [Fetch and Store Asteroid Data from NASA ](#save-asteroid)
+    - [Update Specific Asteroid Data](#update-asteroid)
+    - [Delete Asteroid by ID](#delete-asteroid)
 
 ## Introduction
 
