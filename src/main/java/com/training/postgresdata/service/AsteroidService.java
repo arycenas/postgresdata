@@ -42,7 +42,7 @@ public class AsteroidService {
 
         sortAsteroid(asteroidList, sortBy, sortDirection);
 
-        return asteroidRepository.saveAll(asteroidList);
+        return asteroidRepository.saveAllAndFlush(asteroidList);
     }
 
     private List<Asteroid> parseAsteroidData(String jsonData) {
@@ -180,7 +180,7 @@ public class AsteroidService {
             });
 
             // Simpan asteroid yang diperbarui ke database
-            return asteroidRepository.save(asteroid);
+            return asteroidRepository.saveAndFlush(asteroid);
         } else {
             throw new RuntimeException("Asteroid not found");
         }

@@ -105,7 +105,7 @@ public class AsteroidController {
         }
 
         asteroidService.deleteAsteroid(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Update asteroid data by ID")
