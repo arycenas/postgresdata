@@ -56,7 +56,7 @@ public class AsteroidService {
             for (JsonNode dateNode : nearEarthObjects) {
                 for (JsonNode asteroidNode : dateNode) {
                     Asteroid asteroid = new Asteroid();
-                    asteroid.setId(asteroidNode.path("neo_reference_id").asLong());
+                    asteroid.setNeoReferenceId(asteroidNode.path("neo_reference_id").asLong());
                     asteroid.setName(asteroidNode.path("name").asText());
                     asteroid.setDiameter(asteroidNode.path("estimated_diameter").path("meters")
                             .path("estimated_diameter_max").asDouble());
