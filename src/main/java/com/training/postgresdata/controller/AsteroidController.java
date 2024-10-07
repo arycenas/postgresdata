@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,11 +32,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Asteroid Controller", description = "Operations to create, read, update, and delete asteroids from NASA API")
 public class AsteroidController {
 
-    @Autowired
-    private AsteroidService asteroidService;
+    private final AsteroidService asteroidService;
+    private final ValidateService validateService;
 
-    @Autowired
-    private ValidateService validateService;
+    public AsteroidController(AsteroidService asteroidService, ValidateService validateService) {
+        this.asteroidService = asteroidService;
+        this.validateService = validateService;
+    }
 
     private boolean validateToken(String token) {
         return validateService.validateTokenFromUsermanage(token);

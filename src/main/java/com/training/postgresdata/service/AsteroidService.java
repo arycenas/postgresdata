@@ -10,7 +10,6 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -24,11 +23,14 @@ import com.training.postgresdata.repository.AsteroidRepository;
 @Service
 public class AsteroidService {
 
-    @Autowired
-    private AsteroidRepository asteroidRepository;
-
     private static final String API_KEY = "9vaeEgNEFNmo4QMaYhdLlsSWeHkw3thvGhIiZhkp";
     private static final String URL_TEMPLATE = "https://api.nasa.gov/neo/rest/v1/feed?start_date={start_date}&end_date={end_date}&api_key={api_key}";
+
+    private final AsteroidRepository asteroidRepository;
+
+    public AsteroidService(AsteroidRepository asteroidRepository) {
+        this.asteroidRepository = asteroidRepository;
+    }
 
     public List<Asteroid> saveAsteroid(String startDate, String endDate, String sortBy, String sortDirection) {
         RestTemplate restTemplate = new RestTemplate();

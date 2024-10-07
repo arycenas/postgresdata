@@ -97,7 +97,7 @@ public class AsteroidServiceTest {
         List<Asteroid> asteroids = asteroidService.saveAsteroid(startDate, endDate, sortBy, sortDirection);
 
         // Verify that the repository's saveAll method was called
-        verify(asteroidRepository, times(1)).saveAll(anyList());
+        verify(asteroidRepository, times(1)).saveAllAndFlush(anyList());
 
         // Ensure that the parsed asteroid from the NASA API has the correct data
         assertNotNull(asteroids);
@@ -134,7 +134,7 @@ public class AsteroidServiceTest {
         Asteroid updatedAsteroid = asteroidService.updateAsteroidPartially(asteroidId, updates);
 
         // Verify that the repository's save method was called
-        verify(asteroidRepository, times(1)).save(existingAsteroid);
+        verify(asteroidRepository, times(1)).saveAndFlush(existingAsteroid);
 
         // Check that the asteroid was updated with the new values
         assertEquals("New Asteroid Name", updatedAsteroid.getName());

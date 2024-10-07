@@ -1,6 +1,5 @@
 package com.training.postgresdata.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -12,8 +11,11 @@ public class ValidateService {
 
     private static final String USERMANAGE = "http://usermanage-app:8080/auth/validate";
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
+
+    public ValidateService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public boolean validateTokenFromUsermanage(String token) {
         TokenRequest tokenRequest = new TokenRequest(token);
