@@ -68,7 +68,6 @@ public class AsteroidService {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            log.info("Parsing asteroid data from NASA API.");
             JsonNode root = objectMapper.readTree(jsonData);
             JsonNode nearEarthObjects = root.path("near_earth_objects");
 
@@ -126,7 +125,6 @@ public class AsteroidService {
     }
 
     public List<Asteroid> getAllAsteroids() {
-        log.info("Fetching all asteroids from the database.");
         List<Asteroid> asteroidList = asteroidRepository.findAll();
         if (asteroidList.isEmpty()) {
             log.warn("No asteroid data found in database");
@@ -147,12 +145,10 @@ public class AsteroidService {
     }
 
     public Asteroid updateAsteroidPartially(Long id, HashMap<String, Object> updates) {
-        log.info("Updating asteroid with ID: {}", id);
         Optional<Asteroid> asteroidOpt = asteroidRepository.findById(id);
 
         if (asteroidOpt.isPresent()) {
             Asteroid asteroid = asteroidOpt.get();
-            log.info("Asteroid found: {}", asteroid);
 
             updates.forEach((key, value) -> {
                 if (value != null) {
@@ -160,50 +156,31 @@ public class AsteroidService {
                         case "name" -> {
                             if (value instanceof String string) {
                                 asteroid.setName(string);
-                                log.info("Updated asteroid name to: {}", string);
-                            } else {
-                                log.warn("Invalid data type for 'name': {}", value.getClass().getSimpleName());
                             }
                         }
                         case "diameter" -> {
                             if (value instanceof Number number) {
                                 asteroid.setDiameter(number.doubleValue());
-                                log.info("Updated asteroid diameter to: {}", number);
-                            } else {
-                                log.warn("Invalid data type for 'diameter': {}", value.getClass().getSimpleName());
                             }
                         }
                         case "distance" -> {
                             if (value instanceof Number number) {
                                 asteroid.setDistance(number.doubleValue());
-                                log.info("Updated asteroid distance to: {}", number);
-                            } else {
-                                log.warn("Invalid data type for 'distance': {}", value.getClass().getSimpleName());
                             }
                         }
                         case "velocity" -> {
                             if (value instanceof Number number) {
                                 asteroid.setVelocity(number.doubleValue());
-                                log.info("Updated asteroid velocity to: {}", number);
-                            } else {
-                                log.warn("Invalid data type for 'velocity': {}", value.getClass().getSimpleName());
                             }
                         }
                         case "isHazardous" -> {
                             if (value instanceof String string) {
                                 asteroid.setHazardous(string);
-                                log.info("Updated asteroid hazardous status to: {}", string);
-                            } else {
-                                log.warn("Invalid data type for 'isHazardous': {}", value.getClass().getSimpleName());
                             }
                         }
                         case "closeApproachDate" -> {
                             if (value instanceof String string) {
                                 asteroid.setCloseApproachDate(string);
-                                log.info("Updated asteroid close approach date to: {}", string);
-                            } else {
-                                log.warn("Invalid data type for 'closeApproachDate': {}",
-                                        value.getClass().getSimpleName());
                             }
                         }
                         default -> log.warn("Unrecognized field: {}", key);
@@ -211,19 +188,22 @@ public class AsteroidService {
                 }
             });
 
-            Asteroid updatedAsteroid = asteroidRepository.saveAndFlush(asteroid);
-            log.info("Asteroid with ID: {} successfully updated.", id);
-
-            return updatedAsteroid;
+            try {
+                Asteroid updatedAsteroid = asteroidRepository.saveAndFlush(asteroid);
+                log.info("Successfully updated asteroid with ID: {}", id);
+                return updatedAsteroid;
+            } catch (Exception e) {
+                log.error("Failed to update asteroid with ID: {}. Error: {}", id, e.getMessage());
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update asteroid");
+            }
         } else {
             log.warn("Asteroid with ID: {} not found.", id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Asteroid not found.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Asteroid not found");
         }
     }
 
     public void deleteAsteroid(Long id) {
         try {
-            log.info("Deleting asteroid with ID: {}", id);
             asteroidRepository.deleteById(id);
             log.info("Asteroid with ID: {} successfully deleted.", id);
         } catch (Exception e) {

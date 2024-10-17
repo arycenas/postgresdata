@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +34,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Asteroid Controller", description = "Operations to create, read, update, and delete asteroids from NASA API")
 public class AsteroidController {
 
+    private static final Logger log = LoggerFactory.getLogger(AsteroidController.class);
+
     private final AsteroidService asteroidService;
     private final ValidateService validateService;
 
@@ -41,7 +45,13 @@ public class AsteroidController {
     }
 
     private boolean validateToken(String token) {
-        return validateService.validateTokenFromUsermanage(token);
+        boolean isValid = validateService.validateTokenFromUsermanage(token);
+        if (isValid) {
+            log.info("Token is valid.");
+        } else {
+            log.warn("Token is invalid or expired.");
+        }
+        return isValid;
     }
 
     @Operation(summary = "Fetch NASA API asteroid data and save to PostgreSQL")
@@ -51,7 +61,10 @@ public class AsteroidController {
     })
     public ResponseEntity<?> createAsteroid(@RequestHeader("Authorization") String token,
             @RequestBody AsteroidRequest asteroidRequest) {
+        log.info("Request to save asteroid data from NASA API received.");
+
         if (!validateToken(token.substring(7))) {
+            log.warn("Unauthorized request: Invalid or expired token.");
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
@@ -61,6 +74,7 @@ public class AsteroidController {
                 asteroidRequest.getSortBy(),
                 asteroidRequest.getSortDirection());
 
+        log.info("Successfully saved {} asteroids.", asteroidList.size());
         return ResponseEntity.ok(asteroidList);
     }
 
@@ -70,11 +84,16 @@ public class AsteroidController {
             @ApiResponse(responseCode = "200", description = "Asteroids fetched from PostgreSQL successfully", content = @Content(schema = @Schema(implementation = Asteroid.class)))
     })
     public ResponseEntity<?> getAllAsteroids(@RequestHeader("Authorization") String token) {
+        log.info("Request to get all asteroids received.");
+
         if (!validateToken(token.substring(7))) {
+            log.warn("Unauthorized request: Invalid or expired token.");
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
-        return ResponseEntity.ok(asteroidService.getAllAsteroids());
+        List<Asteroid> asteroidList = asteroidService.getAllAsteroids();
+        log.info("Found {} asteroids in the database.", asteroidList.size());
+        return ResponseEntity.ok(asteroidList);
     }
 
     @Operation(summary = "Get Asteroid data by ID")
@@ -83,14 +102,19 @@ public class AsteroidController {
             @ApiResponse(responseCode = "200", description = "Asteroid fetched by ID successfully", content = @Content(schema = @Schema(implementation = Asteroid.class)))
     })
     public ResponseEntity<?> getAsteroidById(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        log.info("Request to get asteroid by ID: {} received.", id);
+
         if (!validateToken(token.substring(7))) {
+            log.warn("Unauthorized request: Invalid or expired token.");
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
         Asteroid asteroid = asteroidService.getAsteroidById(id);
         if (asteroid != null) {
+            log.info("Asteroid with ID: {} found.", id);
             return ResponseEntity.ok(asteroid);
         } else {
+            log.warn("Asteroid with ID: {} not found.", id);
             return ResponseEntity.notFound().build();
         }
     }
@@ -101,11 +125,15 @@ public class AsteroidController {
             @ApiResponse(responseCode = "200", description = "Asteroid deleted successfully", content = @Content(schema = @Schema(implementation = Asteroid.class)))
     })
     public ResponseEntity<?> deleteAsteroid(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        log.info("Request to delete asteroid with ID: {} received.", id);
+
         if (!validateToken(token.substring(7))) {
+            log.warn("Unauthorized request: Invalid or expired token.");
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
         asteroidService.deleteAsteroid(id);
+        log.info("Asteroid with ID: {} deleted successfully.", id);
         return ResponseEntity.ok().build();
     }
 
@@ -116,10 +144,14 @@ public class AsteroidController {
     })
     public ResponseEntity<Asteroid> updateAsteroidPartially(@PathVariable Long id,
             @RequestBody Map<String, Object> updates) {
+        log.info("Request to update asteroid with ID: {} received.", id);
+
         try {
             Asteroid updatedAsteroid = asteroidService.updateAsteroidPartially(id, new HashMap<>(updates));
+            log.info("Asteroid with ID: {} updated successfully.", id);
             return ResponseEntity.ok(updatedAsteroid);
         } catch (RuntimeException e) {
+            log.warn("Asteroid with ID: {} not found.", id);
             return ResponseEntity.notFound().build();
         }
     }
