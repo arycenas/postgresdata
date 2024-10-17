@@ -128,7 +128,13 @@ public class AsteroidService {
     public List<Asteroid> getAllAsteroids() {
         log.info("Fetching all asteroids from the database.");
         List<Asteroid> asteroidList = asteroidRepository.findAll();
+        if (asteroidList.isEmpty()) {
+            log.warn("No asteroid data found in database");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No asteroid data found");
+        }
+
         log.info("Found {} asteroids in the database.", asteroidList.size());
+
         return asteroidList;
     }
 
