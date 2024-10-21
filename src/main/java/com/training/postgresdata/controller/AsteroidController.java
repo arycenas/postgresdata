@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.training.postgresdata.model.Asteroid;
@@ -70,9 +71,7 @@ public class AsteroidController {
 
         List<Asteroid> asteroidList = asteroidService.saveAsteroid(
                 asteroidRequest.getStartDate(),
-                asteroidRequest.getEndDate(),
-                asteroidRequest.getSortBy(),
-                asteroidRequest.getSortDirection());
+                asteroidRequest.getEndDate());
 
         log.info("Successfully saved {} asteroids.", asteroidList.size());
         return ResponseEntity.ok(asteroidList);
@@ -83,7 +82,10 @@ public class AsteroidController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Asteroids fetched from PostgreSQL successfully", content = @Content(schema = @Schema(implementation = Asteroid.class)))
     })
-    public ResponseEntity<?> getAllAsteroids(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getAllAsteroids(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
         log.info("Request to get all asteroids received.");
 
         if (!validateToken(token.substring(7))) {
@@ -91,7 +93,7 @@ public class AsteroidController {
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
-        List<Asteroid> asteroidList = asteroidService.getAllAsteroids();
+        List<Asteroid> asteroidList = asteroidService.getAllAsteroids(sortBy, sortDirection);
         log.info("Found {} asteroids in the database.", asteroidList.size());
         return ResponseEntity.ok(asteroidList);
     }

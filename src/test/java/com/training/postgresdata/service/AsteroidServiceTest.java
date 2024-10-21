@@ -1,13 +1,15 @@
 package com.training.postgresdata.service;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,13 +18,19 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.training.postgresdata.model.Asteroid;
@@ -47,137 +55,213 @@ public class AsteroidServiceTest {
 
         // Sample JSON response similar to the NASA API structure
         sampleJson = """
+                {
+                  "near_earth_objects": {
+                    "2023-09-19": [
                     {
-                    "near_earth_objects": {
-                        "2023-09-19": [
-                            {
-                                "neo_reference_id": "2465633",
-                                "name": "465633 (2009 JR5)",
-                                "estimated_diameter": {
-                                    "meters": {
-                                        "estimated_diameter_max": 0.485
-                                    }
-                                },
-                                "close_approach_data": [
-                                    {
-                                        "miss_distance": {
-                                            "meters": "45290298.225"
-                                        },
-                                        "relative_velocity": {
-                                            "kilometers_per_hour": "65260.569"
-                                        },
-                                        "close_approach_date": "2023-09-19"
-                                    }
-                                ],
-                                "is_potentially_hazardous_asteroid": true
-                            }
-                        ]
-                    }
+                        "neo_reference_id": "2465633",
+                        "name": "465633 (2009 JR5)",
+                        "estimated_diameter": {
+                          "meters": {
+                            "estimated_diameter_max": 485.0
+                          }
+                        },
+                        "close_approach_data": [
+                          {
+                            "miss_distance": {
+                              "kilometers": "45290298.225"
+                            },
+                            "relative_velocity": {
+                              "kilometers_per_hour": "65260.569"
+                            },
+                            "close_approach_date": "2023-09-19"
+                          }
+                        ],
+                        "is_potentially_hazardous_asteroid": true
+                      }
+                    ]
+                  }
                 }
                 """;
     }
 
     @Test
-    public void testSaveAsteroidFromNASAAPI() throws JsonProcessingException {
+    public void testSaveAsteroid_Success() throws JsonProcessingException {
         String startDate = "2023-09-19";
         String endDate = "2023-09-20";
-        String sortBy = "name";
-        String sortDirection = "asc";
 
         // Mocking the RestTemplate response
-        @SuppressWarnings("unchecked")
         ResponseEntity<String> responseEntity = mock(ResponseEntity.class);
         when(restTemplate.getForEntity(anyString(), eq(String.class))).thenReturn(responseEntity);
         when(responseEntity.getBody()).thenReturn(sampleJson);
 
-        // Mocking the saveAll method in the repository
-        when(asteroidRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        // Mocking the saveAllAndFlush method in the repository
+        when(asteroidRepository.saveAllAndFlush(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Call the service to save asteroids
-        List<Asteroid> asteroids = asteroidService.saveAsteroid(startDate, endDate, sortBy, sortDirection);
+        List<Asteroid> asteroids = asteroidService.saveAsteroid(startDate, endDate);
 
-        // Verify that the repository's saveAll method was called
+        // Verify that the repository's saveAllAndFlush method was called
         verify(asteroidRepository, times(1)).saveAllAndFlush(anyList());
 
         // Ensure that the parsed asteroid from the NASA API has the correct data
         assertNotNull(asteroids);
-        assertTrue(!asteroids.isEmpty()); // Should now pass as list should not be empty
+        assertFalse(asteroids.isEmpty());
         Asteroid asteroid = asteroids.get(0);
-        assertEquals("(1999 TY2)", asteroid.getName());
-        assertEquals(130.0289270043, asteroid.getDiameter());
-        assertEquals(4.64276685711726E7, asteroid.getDistance());
-        assertEquals(88033.1436807948, asteroid.getVelocity());
+        assertEquals("465633 (2009 JR5)", asteroid.getName());
+        assertEquals(485.0, asteroid.getDiameter());
+        assertEquals(45290298.225, asteroid.getDistance());
+        assertEquals(65260.569, asteroid.getVelocity());
         assertEquals("2023-09-19", asteroid.getCloseApproachDate());
-        assertEquals("No", asteroid.getHazardous());
+        assertEquals("Yes", asteroid.getHazardous());
     }
 
     @Test
-    public void testUpdateAsteroidPartially() {
-        Long asteroidId = 2465633L;
+    public void testSaveAsteroid_Failure_NASA_API_Unavailable() {
+        String startDate = "2023-09-19";
+        String endDate = "2023-09-20";
+
+        // Mocking RestTemplate to throw an exception
+        when(restTemplate.getForEntity(anyString(), eq(String.class)))
+                .thenThrow(new RestClientException("API unavailable"));
+
+        // Expecting a ResponseStatusException with SERVICE_UNAVAILABLE status
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            asteroidService.saveAsteroid(startDate, endDate);
+        });
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
+    }
+
+    @Test
+    public void testGetAllAsteroids_Success() {
+        String sortBy = "name";
+        String sortDirection = "asc";
+
+        Asteroid asteroid1 = new Asteroid();
+        asteroid1.setName("Asteroid A");
+
+        Asteroid asteroid2 = new Asteroid();
+        asteroid2.setName("Asteroid B");
+
+        List<Asteroid> asteroidList = Arrays.asList(asteroid1, asteroid2);
+
+        // Mocking the repository response
+        when(asteroidRepository.findAll(any(Sort.class))).thenReturn(asteroidList);
+
+        List<Asteroid> result = asteroidService.getAllAsteroids(sortBy, sortDirection);
+
+        // Verify that the repository's findAll method was called with correct Sort
+        verify(asteroidRepository, times(1)).findAll(any(Sort.class));
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    public void testGetAllAsteroids_NoDataFound() {
+        String sortBy = "name";
+        String sortDirection = "asc";
+
+        // Mocking the repository to return empty list
+        when(asteroidRepository.findAll(any(Sort.class))).thenReturn(Collections.emptyList());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            asteroidService.getAllAsteroids(sortBy, sortDirection);
+        });
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    public void testGetAsteroidById_Success() {
+        Long id = 1L;
+        Asteroid asteroid = new Asteroid();
+        asteroid.setId(id);
+        asteroid.setName("Asteroid 1");
+
+        when(asteroidRepository.findById(id)).thenReturn(Optional.of(asteroid));
+
+        Asteroid result = asteroidService.getAsteroidById(id);
+
+        verify(asteroidRepository, times(1)).findById(id);
+        assertNotNull(result);
+        assertEquals(id, result.getId());
+        assertEquals("Asteroid 1", result.getName());
+    }
+
+    @Test
+    public void testGetAsteroidById_NotFound() {
+        Long id = 1L;
+
+        when(asteroidRepository.findById(id)).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            asteroidService.getAsteroidById(id);
+        });
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    public void testUpdateAsteroidPartially_Success() {
+        Long id = 1L;
         Asteroid existingAsteroid = new Asteroid();
-        existingAsteroid.setId(asteroidId);
-        existingAsteroid.setName("465633 (2009 JR5)");
-        existingAsteroid.setDiameter(0.485);
-        existingAsteroid.setDistance(45290298.225);
-        existingAsteroid.setVelocity(65260.569);
-        existingAsteroid.setHazardous("yes");
-        existingAsteroid.setCloseApproachDate("2023-09-19");
+        existingAsteroid.setId(id);
+        existingAsteroid.setName("Old Name");
+        existingAsteroid.setDiameter(100.0);
 
         HashMap<String, Object> updates = new HashMap<>();
-        updates.put("name", "New Asteroid Name");
-        updates.put("diameter", 0.5);
+        updates.put("name", "New Name");
+        updates.put("diameter", 200.0);
 
-        when(asteroidRepository.findById(asteroidId)).thenReturn(Optional.of(existingAsteroid));
-        when(asteroidRepository.save(any(Asteroid.class))).thenReturn(existingAsteroid);
+        when(asteroidRepository.findById(id)).thenReturn(Optional.of(existingAsteroid));
+        when(asteroidRepository.saveAndFlush(any(Asteroid.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Call the partial update method
-        Asteroid updatedAsteroid = asteroidService.updateAsteroidPartially(asteroidId, updates);
+        Asteroid updatedAsteroid = asteroidService.updateAsteroidPartially(id, updates);
 
-        // Verify that the repository's save method was called
         verify(asteroidRepository, times(1)).saveAndFlush(existingAsteroid);
 
-        // Check that the asteroid was updated with the new values
-        assertEquals("New Asteroid Name", updatedAsteroid.getName());
-        assertEquals(0.5, updatedAsteroid.getDiameter());
-        assertEquals(45290298.225, updatedAsteroid.getDistance()); // unchanged
-        assertEquals(65260.569, updatedAsteroid.getVelocity()); // unchanged
+        assertEquals("New Name", updatedAsteroid.getName());
+        assertEquals(200.0, updatedAsteroid.getDiameter());
     }
 
     @Test
-    public void testSortAsteroidsByHazardous() {
-        Asteroid asteroid1 = new Asteroid();
-        asteroid1.setName("Asteroid 1");
-        asteroid1.setHazardous("yes");
+    public void testUpdateAsteroidPartially_NotFound() {
+        Long id = 1L;
+        HashMap<String, Object> updates = new HashMap<>();
+        updates.put("name", "New Name");
 
-        Asteroid asteroid2 = new Asteroid();
-        asteroid2.setName("Asteroid 2");
-        asteroid2.setHazardous("no");
+        when(asteroidRepository.findById(id)).thenReturn(Optional.empty());
 
-        List<Asteroid> asteroidList = Arrays.asList(asteroid1, asteroid2);
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            asteroidService.updateAsteroidPartially(id, updates);
+        });
 
-        // Sort by hazardous in descending order
-        asteroidService.sortAsteroid(asteroidList, "hazardous", "desc");
-
-        // The first element should be the hazardous one
-        assertEquals("yes", asteroidList.get(0).getHazardous());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
-    public void testSortAsteroidsByCloseApproachDate() {
-        Asteroid asteroid1 = new Asteroid();
-        asteroid1.setName("Asteroid 1");
-        asteroid1.setCloseApproachDate("2023-09-19");
+    public void testDeleteAsteroid_Success() {
+        Long id = 1L;
 
-        Asteroid asteroid2 = new Asteroid();
-        asteroid2.setName("Asteroid 2");
-        asteroid2.setCloseApproachDate("2023-09-18");
+        doNothing().when(asteroidRepository).deleteById(id);
 
-        List<Asteroid> asteroidList = Arrays.asList(asteroid1, asteroid2);
+        asteroidService.deleteAsteroid(id);
 
-        // Sort by closeApproachDate in ascending order
-        asteroidService.sortAsteroid(asteroidList, "closeapproachdate", "asc");
+        verify(asteroidRepository, times(1)).deleteById(id);
+    }
 
-        // The first element should be the one with the earlier date
-        assertEquals("2023-09-18", asteroidList.get(0).getCloseApproachDate());
+    @Test
+    public void testDeleteAsteroid_Exception() {
+        Long id = 1L;
+
+        doThrow(new RuntimeException("Delete failed")).when(asteroidRepository).deleteById(id);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            asteroidService.deleteAsteroid(id);
+        });
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
     }
 }

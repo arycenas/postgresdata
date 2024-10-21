@@ -1,15 +1,13 @@
 package com.training.postgresdata.service;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,13 +28,14 @@ public class AsteroidService {
     private static final String URL_TEMPLATE = "https://api.nasa.gov/neo/rest/v1/feed?start_date={start_date}&end_date={end_date}&api_key={api_key}";
     private static final Logger log = LoggerFactory.getLogger(AsteroidService.class);
     private final AsteroidRepository asteroidRepository;
+    private final RestTemplate restTemplate;
 
-    public AsteroidService(AsteroidRepository asteroidRepository) {
+    public AsteroidService(AsteroidRepository asteroidRepository, RestTemplate restTemplate) {
         this.asteroidRepository = asteroidRepository;
+        this.restTemplate = restTemplate;
     }
 
-    public List<Asteroid> saveAsteroid(String startDate, String endDate, String sortBy, String sortDirection) {
-        RestTemplate restTemplate = new RestTemplate();
+    public List<Asteroid> saveAsteroid(String startDate, String endDate) {
         String url = URL_TEMPLATE.replace("{start_date}", startDate)
                 .replace("{end_date}", endDate)
                 .replace("{api_key}", API_KEY);
@@ -53,9 +52,6 @@ public class AsteroidService {
 
         List<Asteroid> asteroidList = parseAsteroidData(response.getBody());
         log.info("Parsed {} asteroids from NASA API.", asteroidList.size());
-
-        sortAsteroid(asteroidList, sortBy, sortDirection);
-        log.info("Sorted asteroids by {} in {} order.", sortBy, sortDirection);
 
         List<Asteroid> savedAsteroids = asteroidRepository.saveAllAndFlush(asteroidList);
         log.info("Saved {} asteroids to the database.", savedAsteroids.size());
@@ -99,33 +95,14 @@ public class AsteroidService {
         return asteroidList;
     }
 
-    public void sortAsteroid(List<Asteroid> asteroidList, String sortBy, String sortDirection) {
-        Comparator<Asteroid> comparator;
-
-        log.info("Sorting asteroids by {} in {} order.", sortBy, sortDirection);
-
-        comparator = switch (sortBy.toLowerCase()) {
-            case "diameter" -> Comparator.comparing(Asteroid::getDiameter);
-            case "distance" -> Comparator.comparing(Asteroid::getDistance);
-            case "velocity" -> Comparator.comparing(Asteroid::getVelocity);
-            case "closeapproachdate" -> Comparator.comparing(asteroid -> {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                return LocalDate.parse(asteroid.getCloseApproachDate(), formatter);
-            });
-            case "hazardous" -> Comparator.comparing(Asteroid::getHazardous);
-            default -> Comparator.comparing(Asteroid::getName);
-        };
-
+    public List<Asteroid> getAllAsteroids(String sortBy, String sortDirection) {
+        Sort.Direction direction = Sort.Direction.ASC;
         if ("desc".equalsIgnoreCase(sortDirection)) {
-            comparator = comparator.reversed();
+            direction = Sort.Direction.DESC;
         }
 
-        asteroidList.sort(comparator);
-        log.info("Asteroid list sorted successfully.");
-    }
-
-    public List<Asteroid> getAllAsteroids() {
-        List<Asteroid> asteroidList = asteroidRepository.findAll();
+        Sort sort = Sort.by(direction, sortBy);
+        List<Asteroid> asteroidList = asteroidRepository.findAll(sort);
         if (asteroidList.isEmpty()) {
             log.warn("No asteroid data found in database");
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No asteroid data found");
