@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -85,7 +86,9 @@ public class AsteroidController {
     public ResponseEntity<?> getAllAsteroids(
             @RequestHeader("Authorization") String token,
             @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortDirection) {
+            @RequestParam(required = false) String sortDirection,
+            @RequestParam int page,
+            @RequestParam int size) {
         log.info("Request to get all asteroids received.");
 
         if (!validateToken(token.substring(7))) {
@@ -93,8 +96,8 @@ public class AsteroidController {
             return ResponseEntity.status(401).body("Invalid or expired token.");
         }
 
-        List<Asteroid> asteroidList = asteroidService.getAllAsteroids(sortBy, sortDirection);
-        log.info("Found {} asteroids in the database.", asteroidList.size());
+        Page<Asteroid> asteroidList = asteroidService.getAllAsteroids(sortBy, sortDirection, page, size);
+        log.info("Found {} asteroids in the database.", asteroidList.getTotalElements());
         return ResponseEntity.ok(asteroidList);
     }
 

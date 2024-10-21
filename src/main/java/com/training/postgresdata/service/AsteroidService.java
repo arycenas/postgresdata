@@ -7,6 +7,9 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -95,22 +98,23 @@ public class AsteroidService {
         return asteroidList;
     }
 
-    public List<Asteroid> getAllAsteroids(String sortBy, String sortDirection) {
+    public Page<Asteroid> getAllAsteroids(String sortBy, String sortDirection, int page, int size) {
         Sort.Direction direction = Sort.Direction.ASC;
         if ("desc".equalsIgnoreCase(sortDirection)) {
             direction = Sort.Direction.DESC;
         }
 
         Sort sort = Sort.by(direction, sortBy);
-        List<Asteroid> asteroidList = asteroidRepository.findAll(sort);
-        if (asteroidList.isEmpty()) {
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Asteroid> asteroidPage = asteroidRepository.findAll(pageable);
+        if (asteroidPage.isEmpty()) {
             log.warn("No asteroid data found in database");
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No asteroid data found");
         }
 
-        log.info("Found {} asteroids in the database.", asteroidList.size());
+        log.info("Found {} asteroids in the database.", asteroidPage.getTotalElements());
 
-        return asteroidList;
+        return asteroidPage;
     }
 
     public Asteroid getAsteroidById(Long id) {
