@@ -27,8 +27,8 @@ import com.training.postgresdata.repository.AsteroidRepository;
 @Service
 public class AsteroidService {
 
-    private static final String API_KEY = "9vaeEgNEFNmo4QMaYhdLlsSWeHkw3thvGhIiZhkp";
-    private static final String URL_TEMPLATE = "https://api.nasa.gov/neo/rest/v1/feed?start_date={start_date}&end_date={end_date}&api_key={api_key}";
+    private static final String API_KEY = System.getenv("NASA_API_KEY");
+    private static final String URL_TEMPLATE = System.getenv("NASA_URI");
     private static final Logger log = LoggerFactory.getLogger(AsteroidService.class);
     private final AsteroidRepository asteroidRepository;
     private final RestTemplate restTemplate;
